@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.17
+FROM golang:1.17-stretch
 WORKDIR /src
 
 # This arg is passed by docker buildx & contains the target CPU architecture (e.g., amd64, arm64, etc.)
@@ -43,14 +43,14 @@ RUN \
 
 # Generate latest ca-certificates
 
-FROM debian:buster-slim AS certs
+FROM debian:stretch-slim  AS certs
 
 RUN \
   apt update && \
   apt install -y ca-certificates && \
   cat /etc/ssl/certs/* > /ca-certificates.crt
 
-FROM scratch
+FROM debian:stretch
 COPY --from=0 /src/out/executor /kaniko/executor
 COPY --from=0 /src/out/warmer /kaniko/warmer
 COPY --from=0 /usr/local/bin/docker-credential-gcr /kaniko/docker-credential-gcr
@@ -61,20 +61,20 @@ COPY --from=busybox:1.32.0 /bin /busybox
 # the below COPY command is added to address "ld64.so.1 not found" issue. This extra copy action will not 
 # happen on amd64 or arm64 platforms since /lib does not exist in amd64 or arm64 version of busybox container.
 # Similar issues could be found in https://github.com/multiarch/qemu-user-static/issues/110#issuecomment-652951564.
-COPY --from=busybox:1.32.0 /*lib /lib
+# COPY --from=busybox:1.32.0 /*lib /lib
 # Declare /busybox as a volume to get it automatically in the path to ignore
-VOLUME /busybox
+# VOLUME /busybox
 
 COPY --from=certs /ca-certificates.crt /kaniko/ssl/certs/
 COPY --from=0 /kaniko/.docker /kaniko/.docker
 COPY files/nsswitch.conf /etc/nsswitch.conf
 ENV HOME /root
 ENV USER root
-ENV PATH /usr/local/bin:/kaniko:/busybox
+ENV PATH /home/python-venvs/fc-py36/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/kaniko:/busybox
 ENV SSL_CERT_DIR=/kaniko/ssl/certs
 ENV DOCKER_CONFIG /kaniko/.docker/
 ENV DOCKER_CREDENTIAL_GCR_CONFIG /kaniko/.config/gcloud/docker_credential_gcr_config.json
 WORKDIR /workspace
-RUN ["/busybox/mkdir", "-p", "/bin"]
-RUN ["/busybox/ln", "-s", "/busybox/sh", "/bin/sh"]
+# RUN ["/busybox/mkdir", "-p", "/bin"]
+# RUN ["/busybox/ln", "-s", "/busybox/sh", "/bin/sh"]
 ENTRYPOINT ["/kaniko/executor"]

@@ -106,3 +106,10 @@ push:
 	docker push $(REGISTRY)/executor:debug
 	docker push $(REGISTRY)/executor:slim
 	docker push $(REGISTRY)/warmer:latest
+
+
+.PHONY: stretch-images
+stretch-images: DOCKER_BUILDKIT=1
+stretch-images:
+	docker build ${BUILD_ARG} --build-arg=GOARCH=$(GOARCH) -t rsonghuster/executor:stretch-debug -f deploy/Dockerfile_debug .
+	docker push rsonghuster/executor:stretch-debug
